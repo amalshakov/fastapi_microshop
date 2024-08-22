@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "microshop"
+version = "0.1.0"
+description = "Описание вашего проекта"
+authors = ["Alexander Malshakov <89681115653@mail.ru>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.112.1"
+uvicorn = {extras = ["standart"], version = "^0.30.6"}
+pydantic = {extras = ["email"], version = "^2.8.2"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
