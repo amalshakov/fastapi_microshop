@@ -1,8 +1,13 @@
 from asyncio import current_task
 
-from core.config import settings
-from sqlalchemy.ext.asyncio import (AsyncSession, async_scoped_session,
-                                    async_sessionmaker, create_async_engine)
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_scoped_session,
+    async_sessionmaker,
+    create_async_engine,
+)
+
+from microshop.core.config import settings
 
 
 class DatabaseHelper:
