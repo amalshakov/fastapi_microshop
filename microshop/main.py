@@ -1,20 +1,20 @@
 from contextlib import asynccontextmanager
 
-from api_v1 import router as router_v1
 from fastapi import FastAPI
-from pydantic import BaseModel, EmailStr
 import uvicorn
 
+from api_v1 import router as router_v1
 from core.config import settings
-from core.models import Base, db_helper
 from items_views import router as items_router
 from users.views import router as users_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with db_helper.engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Когда мы используем alembic мы больше не выполняем
+    # автоматическое создание таблиц.
+    # async with db_helper.engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.create_all)
 
     yield
     # Код для очистки может быть добавлен здесь, если это необходимо
