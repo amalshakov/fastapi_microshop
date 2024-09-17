@@ -1,7 +1,17 @@
 import secrets
-from typing import Annotated
+from time import time
+from typing import Annotated, Any
+import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Cookie,
+    Depends,
+    Header,
+    HTTPException,
+    Response,
+    status,
+)
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 router = APIRouter(prefix="/demo-auth", tags=["Demo Auth"])
@@ -88,11 +98,71 @@ def demo_auth_some_http_header(
     }
 
 
+COOKIES: dict[str, dict[str, Any]] = {}
+# Example
+# {
+#     "w3g4w3wb3bwsvw4v3v": {"username": "petr", "login_ay": 232352},
+#     "wbtsert34gtgs44stw": {"username": "jown", "login_ay": 345345},
+# }
+
+
+COOKIE_SESSION_ID_KEY = "web-app-session-id"
+
+
+def generate_session_id() -> str:
+    return uuid.uuid4().hex
+
+
+def get_session_data(
+    session_id: Annotated[str | None, Cookie(alias=COOKIE_SESSION_ID_KEY)],
+) -> dict:
+    if session_id not in COOKIES:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="not authenticated",
+        )
+
+    return COOKIES[session_id]
+
+
 @router.post("/login-cookie")
-def demo_auth_some_http_header(
-    username: Annotated[str, Depends(get_auth_username_by_static_auth_token)]
+def demo_auth_login_set_cookie(
+    response: Response,
+    # auth_username: Annotated[str, Depends(get_auth_user_username)],
+    username: Annotated[str, Depends(get_auth_username_by_static_auth_token)],
 ):
-    return {
-        "messgae": f"Hi, {username}!",
+    session_id = generate_session_id()
+    COOKIES[session_id] = {
         "username": username,
+        "login_at": int(time()),
+    }
+    response.set_cookie(
+        COOKIE_SESSION_ID_KEY,
+        session_id,
+    )
+    return {"result": "ok"}
+
+
+@router.get("/check_cookie")
+def demo_auth_check_cookie(
+    user_session_data: Annotated[dict, Depends(get_session_data)]
+):
+    username = user_session_data["username"]
+    return {
+        "message": f"Hello {username}!",
+        **user_session_data,
+    }
+
+
+@router.get("/logout_cookie")
+def demo_auth_logout_cookie(
+    response: Response,
+    session_id: Annotated[str, Cookie(alias=COOKIE_SESSION_ID_KEY)],
+    user_session_data: Annotated[dict, Depends(get_session_data)],
+):
+    COOKIES.pop(session_id)
+    response.delete_cookie(COOKIE_SESSION_ID_KEY)
+    username = user_session_data["username"]
+    return {
+        "message": f"Bue {username}!",
     }
