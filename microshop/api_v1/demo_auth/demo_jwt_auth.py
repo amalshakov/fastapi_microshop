@@ -10,8 +10,14 @@ from microshop.api_v1.demo_auth.helpers import (
     create_refresh_token,
 )
 from microshop.api_v1.demo_auth.validation import (
+    REFRESH_TOKEN_TYPE,
+    UserGetterFromToken,
+    get_auth_user_from_token_of_type,
+    get_current_active_auth_user,
     get_current_auth_user,
+    get_current_auth_user_for_refresh,
     get_current_token_payload,
+    validate_auth_user,
 )
 from microshop.auth import utils as auth_utils
 from microshop.users.schemas import UserSchema
@@ -32,43 +38,6 @@ router = APIRouter(
 )
 
 
-def validate_auth_user(
-    username: Annotated[str, Form()],
-    password: Annotated[str, Form()],
-):
-    unauthed_exc = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid username or password",
-    )
-    if not (user := user_db.get(username)):
-        raise unauthed_exc
-
-    if not auth_utils.validate_password(
-        password=password,
-        hashed_password=user.password,
-    ):
-        raise unauthed_exc
-
-    if not user.active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="user inactive",
-        )
-
-    return user
-
-
-def get_current_active_auth_user(
-    user: Annotated[UserSchema, Depends(get_current_auth_user)],
-):
-    if user.active:
-        return user
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="inactive user",
-    )
-
-
 @router.post("/login", response_model=TokenInfo)
 def auth_user_issue_jwt(
     user: Annotated[UserSchema, Depends(validate_auth_user)],
@@ -86,7 +55,11 @@ def auth_user_issue_jwt(
     response_model=TokenInfo,
     response_model_exclude_none=True,
 )
-def auth_refresh_jwt():
+def auth_refresh_jwt(
+    user: Annotated[UserSchema, Depends(get_current_auth_user_for_refresh)],
+    # user: Annotated[UserSchema,Depends(get_auth_user_from_token_of_type(REFRESH_TOKEN_TYPE))],
+    # user: Annotated[UserSchema, Depends(UserGetterFromToken(REFRESH_TOKEN_TYPE))],
+):
     access_token = create_access_token(user)
     return TokenInfo(
         access_token=access_token,

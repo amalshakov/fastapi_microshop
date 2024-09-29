@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Form, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 
@@ -79,3 +79,40 @@ get_current_auth_user = get_auth_user_from_token_of_type(ACCESS_TOKEN_TYPE)
 # get_current_auth_user = UserGetterFromToken(ACCESS_TOKEN_TYPE)
 
 get_current_auth_user_for_refresh = UserGetterFromToken(REFRESH_TOKEN_TYPE)
+
+
+def get_current_active_auth_user(
+    user: Annotated[UserSchema, Depends(get_current_auth_user)],
+):
+    if user.active:
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="inactive user",
+    )
+
+
+def validate_auth_user(
+    username: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+):
+    unauthed_exc = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid username or password",
+    )
+    if not (user := user_db.get(username)):
+        raise unauthed_exc
+
+    if not auth_utils.validate_password(
+        password=password,
+        hashed_password=user.password,
+    ):
+        raise unauthed_exc
+
+    if not user.active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="user inactive",
+        )
+
+    return user
